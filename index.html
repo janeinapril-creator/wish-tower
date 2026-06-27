@@ -2,13 +2,14 @@
 <html lang="ko">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
 <title>사이버 돌탑도 소원을 이루어 줄까</title>
 <style>
   * { margin: 0; padding: 0; box-sizing: border-box; }
-  html, body { height: 100%; overflow: hidden; background: #f4f3f1; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "Apple SD Gothic Neo", sans-serif; }
+  html, body { height: 100%; overflow: hidden; background: #f4f3f1; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "Apple SD Gothic Neo", sans-serif;
+    touch-action: none; -webkit-user-select: none; user-select: none; -webkit-tap-highlight-color: transparent; overscroll-behavior: none; }
   #wrap { position: relative; width: 100vw; height: 100vh; }
-  canvas { display: block; }
+  canvas { display: block; touch-action: none; }
 
   /* 우측 상단 ? 버튼 */
   .help-btn { position: absolute; top: 26px; right: 28px; width: 38px; height: 38px; border: 1.5px solid #bbb; background: transparent; color: #888; font-size: 16px; font-weight: 600; cursor: pointer; border-radius: 50%; display: flex; align-items: center; justify-content: center; transition: all .14s ease; pointer-events: auto; }
@@ -30,8 +31,8 @@
 <div id="wrap">
   <button class="help-btn" id="help" aria-label="도움말">?</button>
   <div class="popover" id="popover">
-    <div class="en-block">Press the spacebar to drop a stone<br>and build your tower.</div>
-    <div class="ko-block">스페이스 바를 눌러 돌을 생성하고<br>돌탑을 쌓아봐요.</div>
+    <div class="en-block">Tap the screen or press the spacebar<br>to drop a stone and build your tower.</div>
+    <div class="ko-block">화면을 탭하거나 스페이스 바를 눌러<br>돌을 생성하고 돌탑을 쌓아봐요.</div>
   </div>
   <button class="reset" id="reset" aria-label="리셋">↺</button>
 </div>
@@ -161,6 +162,26 @@ const mouse = Mouse.create(render.canvas);
 const mc = MouseConstraint.create(engine, { mouse, constraint: { stiffness: 0.2, render: { visible: false } } });
 World.add(world, mc);
 render.mouse = mouse;
+
+// 빈 곳을 탭/클릭하면 돌 생성 (돌을 잡았으면 생성 안 함 → 옮기기 우선)
+// 누른 위치와 뗀 위치가 거의 같을 때만 '탭'으로 간주 (드래그와 구분)
+let pressPos = null;
+Events.on(mc, 'mousedown', () => {
+  pressPos = { x: mouse.position.x, y: mouse.position.y, grabbed: !!mc.body };
+});
+Events.on(mc, 'mouseup', () => {
+  if (!pressPos) return;
+  const dx = mouse.position.x - pressPos.x;
+  const dy = mouse.position.y - pressPos.y;
+  const moved = Math.hypot(dx, dy);
+  // 팝오버가 열려 있었으면 이 탭은 닫기용 → 돌 생성 안 함
+  const popoverWasOpen = document.getElementById('popover').classList.contains('open');
+  // 돌을 안 잡았고(빈 곳), 거의 안 움직였으면(탭) → 생성
+  if (!pressPos.grabbed && moved < 10 && !popoverWasOpen) {
+    dropStone();
+  }
+  pressPos = null;
+});
 
 // 입력
 function triggerDrop() { dropStone(); }
